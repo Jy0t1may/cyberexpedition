@@ -1,1 +1,14 @@
+node_modules/
+www/
 .DS_Store
+android/.idea/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.jks
+*.keystore
+keystore.properties
+*.apk
+*.aab
+.security-expedition*backup.*/
