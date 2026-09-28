@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Security Expedition</string>
+    <string name="title_activity_main">Security Expedition</string>
+    <string name="package_name">com.jyotirmay.securityexpedition</string>
+    <string name="custom_url_scheme">com.jyotirmay.securityexpedition</string>
+</resources>

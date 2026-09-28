@@ -1,0 +1,1 @@
+export async function saveRoadmap(state,write,status){status('Saving…');try{await write(state);status('Saved automatically on this device.');return state}catch(error){status('Could not save roadmap. Try again.');throw error}}

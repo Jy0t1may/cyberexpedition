@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {saveRoadmap} from '../src/persistence.mjs';
+test('auto-save reports saving then saved after persistence resolves',async()=>{const messages=[],state={ids:['cert-2'],done:[]};const result=await saveRoadmap(state,async data=>{assert.deepEqual(data,state)},text=>messages.push(text));assert.deepEqual(result,state);assert.deepEqual(messages,['Saving…','Saved automatically on this device.'])});
+test('failed writes never claim the roadmap was saved',async()=>{const messages=[];await assert.rejects(saveRoadmap({ids:[],done:[]},async()=>{throw Error('disk')},text=>messages.push(text)));assert.deepEqual(messages,['Saving…','Could not save roadmap. Try again.'])});

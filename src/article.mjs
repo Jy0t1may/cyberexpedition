@@ -1,0 +1,2 @@
+export function articleUrl(raw){try{const url=new URL(raw);return ['http:','https:'].includes(url.protocol)?url.href:null}catch{return null}}
+export async function openArticle(raw,{native,openNative,openWeb}){const url=articleUrl(raw);if(!url)return {ok:false,reason:'invalid-url'};try{if(native){await openNative(url)}else if(!openWeb(url)){return {ok:false,reason:'open-failed'}}return {ok:true,url}}catch{return {ok:false,reason:'open-failed'}}}

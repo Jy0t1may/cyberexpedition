@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {mergeNews,refreshFeeds} from '../src/feed.mjs';
+const src={id:'sans',name:'SANS'},old={sources:[src],articles:[{source:'sans',url:'https://example.org/old',published:'2026-09-01T00:00:00Z'}],fetchedAt:'old'};
+test('refresh keeps old posts alongside new, sorted and unique',()=>{const newRow={source:'sans',url:'https://example.org/new',published:'2026-09-02T00:00:00Z'};const merged=mergeNews(old,{sans:[newRow,old.articles[0]]},'today');assert.deepEqual(merged.articles.map(x=>x.url),['https://example.org/new','https://example.org/old'])});
+test('total failure does not advance time or discard cache',async()=>{await assert.rejects(refreshFeeds({baseline:old,feeds:[{id:'sans',url:'https://example.org/rss'}],request:async()=>{throw Error('offline')}}));assert.equal(old.fetchedAt,'old')});
