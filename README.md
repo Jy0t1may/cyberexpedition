@@ -1,6 +1,6 @@
 # Cyber Security Expedition
 
-Security Expedition is an Android app for keeping up with cybersecurity news and planning a route through security certifications. I started building it to support my own journey toward a cybersecurity internship or job: I wanted a practical way to read relevant reporting, compare learning options, and track what I had completed. I am sharing the project in case it helps other people finding their way into the field.
+This is an Android app for keeping up with cybersecurity news and planning a route through security certifications. I started building it to support my own journey toward a cybersecurity internship or job: I wanted a practical way to read relevant reporting, compare learning options, and track what I had completed. I am sharing the project in case it helps other people finding their way into the field.
 
 The app is a learning and portfolio project, not an official certification guide or a replacement for the original news publishers.
 
