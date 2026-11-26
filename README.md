@@ -1,32 +1,99 @@
 # Cyber Security Expedition
 
-This is an Android app for keeping up with cybersecurity news and planning a route through security certifications. I started building it to support my own journey toward a cybersecurity internship or job: I wanted a practical way to read relevant reporting, compare learning options, and track what I had completed. I am sharing the project in case it helps other people finding their way into the field.
+**Cyber Security Expedition** is an offline-ready Android app for following cybersecurity news, exploring security certifications, and personal study planning. Engineered with vanilla JavaScript, Capacitor, and an enterprise DevSecOps CI/CD pipeline enforcing secure code commits.
 
-The app is a learning and portfolio project, not an official certification guide or a replacement for the original news publishers.
+GitHub Repository: [github.com/Jy0t1may/cyberexpedition](https://github.com/Jy0t1may/cyberexpedition)
 
-## What it does
+---
 
-- **Checks for latest news:** Refresh four cybersecurity feeds on demand: tl;dr sec, Risky Bulletin, SANS Internet Storm Center, and KrebsOnSecurity. Previously saved posts remain available if a feed cannot be reached.
-- **Find relevant posts:** Search headlines and previews, then filter by source and topics such as vulnerabilities, AI security, breaches, cloud, identity, policy, malware, AppSec, and ransomware. Topic labels inferred from text are approximate.
-- **Read the original reporting:** You can click a story to open the publisher's own page through an in-app browser. Security Expedition does not reproduce full articles. Some publishers may require a subscription or login.
-- **Explore certifications:** Search a 482-item catalogue adapted from [Paul Jerimy's Security Certification Roadmap](https://pauljerimy.com/security-certification-roadmap/), filter by career area, and open issuer pages. Catalogue entries are a starting point, not an official or continuously verified price and exam database; unavailable details are labelled as such.
-- **Build a study roadmap:** Add certifications, change their order, open available details, and mark courses complete. The roadmap is saved automatically on the device, without an account.
+## Features
 
-## How it works
-The interface uses HTML, CSS, and JavaScript packaged for Android with Capacitor. Native HTTP requests retrieve RSS/Atom feeds; the app merges posts by URL and keeps a local news cache. Capacitor Preferences stores selected roadmap IDs, order, and completion state. The Browser plugin opens full articles on their publishers' sites. The UI is designed for small screens, system-bar safe areas, keyboard access, and reduced-motion preferences.
+### 1. Curated Security News & Offline Reader
+- **Multi-Feed Aggregation:** Synchronizes on demand with leading security publications: *tl;dr sec*, *Risky Bulletin*, *SANS Internet Storm Center*, and *KrebsOnSecurity*.
+- **Offline Digest & Caching:** Previously retrieved news is safely cached in device storage (`news.json`), enabling reading even without an active internet connection.
+- **In-App Story Reader:** Read concise digests, publication metadata, and heuristic category tags directly in-app, with the option to launch the original publisher source via in-app browser.
+- **Bookmarks:** Bookmark crucial stories to read later or reference during studies, persisted locally via `@capacitor/preferences`.
 
-## Build locally
-Requirements: Node.js 22 or newer, npm, Android Studio, and an Android SDK. From the repository root:
+### 2. Certification Roadmap & Study Tracker
+- **480+ Certification Directory:** Derived from Paul Jerimy's Security Certification Roadmap, categorizing certifications across 9 career domains (Offensive Security, Defensive Security, Engineering, Network, AppSec, IAM, Governance, Audit, Asset & Privacy).
+- **Interactive Roadmap Planner:** Add target certifications, adjust their study order, view estimated study hours, and check off completed milestones.
+- **Progress Tracking & Analytics:** Real-time visual progress bar tracking completion percentage and total estimated study hours.
+- **Zero-Account Local Persistence:** Saved automatically on-device using Capacitor Preferences without requiring a backend account or collecting telemetry.
+
+### 3. Search & Topic Filtering
+- **Keyword Search:** Instant full-text search across article headlines, publishers, and previews.
+- **Domain & Tag Filtering:** Heuristic classification into vulnerabilities, AI security, breaches, cloud, identity, policy, malware, AppSec, and ransomware.
+- **Dedicated Bookmark Filter:** Instant toggle to view all saved stories with dynamic badge counter.
+
+---
+
+## DevSecOps Pipeline & Quality Gates
+
+The repository features an automated GitHub Actions DevSecOps CI/CD pipeline (`.github/workflows/devsecops.yml`) ensuring security and quality across every pull request and commit:
+
+```
+Commit / PR Opened
+      │
+      ▼
+┌────────────────────────────────────────────────────────┐
+│ 1. Secret Scanning (Gitleaks)                          │
+│    Detects committed secrets, tokens, & *.jks files    │
+│                                                        │
+│ 2. Code Quality & Linting                              │
+│    Node syntax and ESM integrity check (npm run lint)  │
+│                                                        │
+│ 3. Automated Unit Testing & Coverage                   │
+│    Native Node test runner (npm run test:coverage)     │
+│                                                        │
+│ 4. SCA Dependency Audit                                │
+│    Automated vulnerability scanning (npm audit)        │
+│                                                        │
+│ 5. CodeQL Static Analysis (SAST)                       │
+│    Deep semantic security analysis for JS/TS           │
+│                                                        │
+│ 6. Android Build Verification                          │
+│    JDK 17 + Android SDK Gradle assembleDebug check     │
+└────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Local Development & Verification
+
+### Prerequisites
+- Node.js 22+
+- npm 10+
+- Android Studio & Android SDK (for native builds)
+
+### Quick Start
 ```sh
+# 1. Install dependencies
 npm ci
-npm test
+
+# 2. Run lint & code quality checks
+npm run lint
+
+# 3. Run unit tests with code coverage report
+npm run test:coverage
+
+# 4. Build web bundle
 npm run build
+
+# 5. Sync Capacitor Android project
 npx cap sync android
+
+# 6. Open or build Android project
 npx cap open android
 ```
 
+---
 
-News links and previews lead to reporting by [tl;dr sec](https://tldrsec.com/), [Risky Bulletin](https://risky.biz/), [SANS Internet Storm Center](https://isc.sans.edu/), and [KrebsOnSecurity](https://krebsonsecurity.com/). The certification catalogue is derived from [Paul Jerimy's roadmap](https://pauljerimy.com/security-certification-roadmap/). Neither the publishers nor Paul Jerimy endorse this app. Their articles, names, and third-party materials remain their own; this repository is not a licence to republish them.
+## Architecture & Security Principles
+- **Minimal Attack Surface:** Pure vanilla ESM with no bloated frontend frameworks or unnecessary dependencies.
+- **Strict Content Security:** In-app browser sandboxing for external links with protocol validation (`http:`, `https:` only; disallowing `javascript:`, `file:` protocols).
+- **Hardened Git Hygiene:** Keystores (`*.jks`, `*.keystore`) and sensitive local archives are strictly blocked in `.gitignore` and enforced via Gitleaks secret scanning.
+
+---
 
 ## Contact
 © 2026 J.M. All rights reserved. [Email](mailto:jyotirmay.mondal@efrei.net) · [GitHub](https://github.com/Jy0t1may) · [LinkedIn](https://www.linkedin.com/in/jyotirmay-mondal)

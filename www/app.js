@@ -1374,11 +1374,47 @@
   }
 
   // src/discovery.mjs
-  var CATEGORIES = [["vulnerability", "Vulnerability"], ["ai-security", "AI security"], ["breach", "Breach"], ["cloud", "Cloud"], ["identity", "Identity"], ["policy", "Policy"], ["malware", "Malware"], ["appsec", "AppSec"], ["ransomware", "Ransomware"], ["other", "Other"]];
+  var CATEGORIES = [
+    ["vulnerability", "Vulnerability"],
+    ["ai-security", "AI security"],
+    ["breach", "Breach"],
+    ["cloud", "Cloud"],
+    ["identity", "Identity"],
+    ["policy", "Policy"],
+    ["malware", "Malware"],
+    ["appsec", "AppSec"],
+    ["ransomware", "Ransomware"],
+    ["other", "Other"]
+  ];
   var normalize = (value) => String(value ?? "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
   var matches = (text2, query) => String(query || "").trim().split(/\s+/).every((word) => normalize(text2).includes(normalize(word)));
-  var tagAlias = { "ai": "ai-security", "ai-security": "ai-security", "identity-access": "identity", "identity": "identity", "iam": "identity", "appsec": "appsec", "application-security": "appsec", "vulnerability": "vulnerability", "vulnerabilities": "vulnerability", "breach": "breach", "cloud": "cloud", "policy": "policy", "malware": "malware", "ransomware": "ransomware" };
-  var patterns = { vulnerability: /\b(?:vulnerabilit(?:y|ies)|cve[- ]?\d{4}|zero[- ]?day|security flaw)\b/i, "ai-security": /\b(?:ai security|llm|agentic|prompt injection|artificial intelligence|gen(?:erative)? ai)\b/i, breach: /\b(?:breach|data leak|compromised|data theft)\b/i, cloud: /\b(?:cloud|aws|azure|gcp|kubernetes)\b/i, identity: /\b(?:identity|authentication|oauth|mfa|credential|passkey)\b/i, policy: /\b(?:regulation|policy|legislation|lawmakers|privacy law)\b/i, malware: /\b(?:malware|trojan|infostealer|spyware|worm)\b/i, appsec: /\b(?:appsec|application security|supply chain|dependency attack)\b/i, ransomware: /\b(?:ransomware|ransom|extortion)\b/i };
+  var tagAlias = {
+    "ai": "ai-security",
+    "ai-security": "ai-security",
+    "identity-access": "identity",
+    "identity": "identity",
+    "iam": "identity",
+    "appsec": "appsec",
+    "application-security": "appsec",
+    "vulnerability": "vulnerability",
+    "vulnerabilities": "vulnerability",
+    "breach": "breach",
+    "cloud": "cloud",
+    "policy": "policy",
+    "malware": "malware",
+    "ransomware": "ransomware"
+  };
+  var patterns = {
+    vulnerability: /\b(?:vulnerabilit(?:y|ies)|cve[- ]?\d{4}|zero[- ]?day|security flaw)\b/i,
+    "ai-security": /\b(?:ai security|llm|agentic|prompt injection|artificial intelligence|gen(?:erative)? ai)\b/i,
+    breach: /\b(?:breach|data leak|compromised|data theft)\b/i,
+    cloud: /\b(?:cloud|aws|azure|gcp|kubernetes)\b/i,
+    identity: /\b(?:identity|authentication|oauth|mfa|credential|passkey)\b/i,
+    policy: /\b(?:regulation|policy|legislation|lawmakers|privacy law)\b/i,
+    malware: /\b(?:malware|trojan|infostealer|spyware|worm)\b/i,
+    appsec: /\b(?:appsec|application security|supply chain|dependency attack)\b/i,
+    ransomware: /\b(?:ransomware|ransom|extortion)\b/i
+  };
   function categoriesFor(article) {
     const found = /* @__PURE__ */ new Set();
     for (const tag of article.tags || []) {
@@ -1386,31 +1422,76 @@
       if (key) found.add(key);
     }
     const body = `${article.title || ""} ${article.extract || ""}`;
-    for (const [key, regex] of Object.entries(patterns)) if (regex.test(body)) found.add(key);
+    for (const [key, regex] of Object.entries(patterns)) {
+      if (regex.test(body)) found.add(key);
+    }
     return found.size ? [...found] : ["other"];
   }
-  function filterNews(articles, { source = "all", categories = [], query = "" } = {}) {
-    return articles.filter((a) => (source === "all" || a.source === source) && (!categories.length || categories.some((c) => categoriesFor(a).includes(c))) && matches(`${a.title || ""} ${a.sourceName || ""} ${a.extract || ""}`, query));
+  function filterNews(articles, { source = "all", categories = [], query = "", bookmarkedOnly = false, bookmarks: bookmarks2 = [] } = {}) {
+    const bookmarkSet = new Set(Array.isArray(bookmarks2) ? bookmarks2 : []);
+    return articles.filter((a) => {
+      if (source !== "all" && a.source !== source) return false;
+      if (bookmarkedOnly && !bookmarkSet.has(a.url) && !bookmarkSet.has(a.id)) return false;
+      if (categories.length && !categories.some((c) => categoriesFor(a).includes(c))) return false;
+      if (query && !matches(`${a.title || ""} ${a.sourceName || ""} ${a.extract || ""}`, query)) return false;
+      return true;
+    });
   }
   function filterCerts(rows, query = "", domain = "all") {
     return rows.filter((c) => (domain === "all" || c.main_domain === domain) && matches(`${c.acronym || ""} ${c.full_name || ""} ${c.main_domain || ""} ${c.sub_domain || ""}`, query));
   }
 
   // src/roadmap.mjs
-  var asState = (state) => Array.isArray(state) ? { ids: state, done: [] } : { ids: state.ids || [], done: state.done || [] };
+  var asState = (state) => Array.isArray(state) ? { ids: state, done: [] } : { ids: state?.ids || [], done: state?.done || [] };
   function toggle(state, id) {
-    const s2 = asState(state), ids = s2.ids.includes(id) ? s2.ids.filter((x) => x !== id) : [...s2.ids, id];
+    const s2 = asState(state);
+    const ids = s2.ids.includes(id) ? s2.ids.filter((x) => x !== id) : [...s2.ids, id];
     return { ids, done: s2.done.filter((x) => ids.includes(x)) };
   }
   function move(state, id, step) {
-    const s2 = asState(state), ids = [...s2.ids], from = ids.indexOf(id), to = from + step;
-    if (from >= 0 && to >= 0 && to < ids.length) [ids[from], ids[to]] = [ids[to], ids[from]];
+    const s2 = asState(state);
+    const ids = [...s2.ids];
+    const from = ids.indexOf(id);
+    const to = from + step;
+    if (from >= 0 && to >= 0 && to < ids.length) {
+      [ids[from], ids[to]] = [ids[to], ids[from]];
+    }
     return { ids, done: [...s2.done] };
   }
   function complete(state, id) {
     const s2 = asState(state);
     if (!s2.ids.includes(id)) return s2;
-    return { ids: [...s2.ids], done: s2.done.includes(id) ? s2.done.filter((x) => x !== id) : [...s2.done, id] };
+    return {
+      ids: [...s2.ids],
+      done: s2.done.includes(id) ? s2.done.filter((x) => x !== id) : [...s2.done, id]
+    };
+  }
+  function clearRoute() {
+    return { ids: [], done: [] };
+  }
+  function calcProgress(state, certsById = /* @__PURE__ */ new Map()) {
+    const s2 = asState(state);
+    const total = s2.ids.length;
+    const completed = s2.done.filter((id) => s2.ids.includes(id)).length;
+    const percentage = total > 0 ? Math.round(completed / total * 100) : 0;
+    let estimatedHours = 0;
+    let completedHours = 0;
+    for (const id of s2.ids) {
+      const cert = certsById instanceof Map ? certsById.get(id) : certsById?.[id];
+      const hours = Number(cert?.study_hours_est) || 0;
+      estimatedHours += hours;
+      if (s2.done.includes(id)) {
+        completedHours += hours;
+      }
+    }
+    return {
+      total,
+      completed,
+      remaining: total - completed,
+      percentage,
+      estimatedHours,
+      completedHours
+    };
   }
   function decodeRoute(saved, legacy, validIds) {
     let parsed;
@@ -1419,7 +1500,8 @@
     } catch {
       parsed = [];
     }
-    const s2 = asState(Array.isArray(parsed) ? parsed : parsed && typeof parsed === "object" ? parsed : []), ids = [...new Set(s2.ids.filter((id) => validIds.has(id)))];
+    const s2 = asState(Array.isArray(parsed) ? parsed : parsed && typeof parsed === "object" ? parsed : []);
+    const ids = [...new Set(s2.ids.filter((id) => validIds ? validIds.has(id) : true))];
     return { ids, done: [...new Set(s2.done.filter((id) => ids.includes(id)))] };
   }
 
@@ -1459,20 +1541,63 @@
       throw error;
     }
   }
+  async function saveBookmarks(bookmarks2, write, status) {
+    if (status) status("Saving bookmarks\u2026");
+    try {
+      await write(bookmarks2);
+      if (status) status("Bookmarks saved.");
+      return bookmarks2;
+    } catch (error) {
+      if (status) status("Could not save bookmarks.");
+      throw error;
+    }
+  }
+
+  // src/bookmarks.mjs
+  function decodeBookmarks(saved) {
+    if (!saved || typeof saved !== "string") return [];
+    try {
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return [];
+      return [...new Set(parsed.filter((item) => typeof item === "string" && item.trim().length > 0))];
+    } catch {
+      return [];
+    }
+  }
+  function toggleBookmark(bookmarks2, item) {
+    const list = Array.isArray(bookmarks2) ? bookmarks2 : [];
+    if (!item || typeof item !== "string") return [...list];
+    return list.includes(item) ? list.filter((b) => b !== item) : [...list, item];
+  }
+  function isBookmarked(bookmarks2, item) {
+    if (!Array.isArray(bookmarks2) || !item) return false;
+    return bookmarks2.includes(item);
+  }
 
   // src/app.mjs
   var $ = (id) => document.getElementById(id);
   var seed = window.__NEWS__ || { sources: [], articles: [] };
   var certs = (window.__CERTIFICATIONS__ || []).map((row, index) => ({ ...row, id: `cert-${index}` }));
   var byId = new Map(certs.map((c) => [c.id, c]));
-  var domains = { redops: "Offensive security", blueops: "Defensive security", engineer: "Security engineering", network: "Network security", software: "Application security", iam: "Identity and access", mgmt: "Governance", test: "Audit and testing", asset: "Asset and privacy" };
+  var domains = {
+    redops: "Offensive security",
+    blueops: "Defensive security",
+    engineer: "Security engineering",
+    network: "Network security",
+    software: "Application security",
+    iam: "Identity and access",
+    mgmt: "Governance & Risk",
+    test: "Audit and testing",
+    asset: "Asset & Privacy"
+  };
   var news = seed;
   var roadmap = { ids: [], done: [] };
+  var bookmarks = [];
   var current = "news";
   var shown = 45;
   var busy = false;
   var sheetOpener = null;
-  var newsFilter = { source: "all", categories: [], query: "" };
+  var newsFilter = { source: "all", categories: [], query: "", bookmarkedOnly: false };
   var certDomain = "all";
   var el = (tag, cls, text2) => {
     const node = document.createElement(tag);
@@ -1480,9 +1605,12 @@
     if (text2 != null) node.textContent = String(text2);
     return node;
   };
-  var date = (value) => Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString() : "Unknown";
+  var date = (value) => Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleDateString(void 0, { month: "short", day: "numeric", year: "numeric" }) : "Unknown";
   var level = (value) => Number(value) >= 19 ? "Beginner" : Number(value) >= 10 ? "Intermediate" : "Advanced";
-  var note = (id, message) => $(id).textContent = message;
+  var note = (id, message) => {
+    const target = $(id);
+    if (target) target.textContent = message;
+  };
   function external(url, label) {
     const a = el("a", "", label);
     try {
@@ -1491,11 +1619,13 @@
       a.href = u2.href;
       a.rel = "noopener noreferrer";
       a.target = "_blank";
-      if (Capacitor.isNativePlatform()) a.onclick = (e) => {
-        e.preventDefault();
-        Browser2.open({ url: u2.href }).catch(() => {
-        });
-      };
+      if (Capacitor.isNativePlatform()) {
+        a.onclick = (e) => {
+          e.preventDefault();
+          Browser2.open({ url: u2.href }).catch(() => {
+          });
+        };
+      }
     } catch {
       a.textContent = "Link unavailable";
     }
@@ -1509,7 +1639,9 @@
       $("tab-" + key).setAttribute("aria-current", key === name ? "page" : "false");
     }
     window.scrollTo(0, 0);
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) $(name + "-view").animate([{ opacity: 0.78, transform: "translateY(5px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 145, easing: "cubic-bezier(.22,1,.36,1)" });
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      $(name + "-view").animate([{ opacity: 0.8, transform: "translateY(4px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 140, easing: "cubic-bezier(.22,1,.36,1)" });
+    }
   }
   var sheetExit = null;
   function finishSheetClose() {
@@ -1527,7 +1659,7 @@
       finishSheetClose();
       return;
     }
-    sheetExit = $("sheet").animate([{ opacity: 1, transform: "translateY(0)" }, { opacity: 0, transform: "translateY(16px)" }], { duration: 155, easing: "ease-in" });
+    sheetExit = $("sheet").animate([{ opacity: 1, transform: "translateY(0)" }, { opacity: 0, transform: "translateY(16px)" }], { duration: 150, easing: "ease-in" });
     sheetExit.onfinish = () => {
       sheetExit = null;
       finishSheetClose();
@@ -1587,6 +1719,23 @@
     line.append(input, el("span", "", label));
     return { line, input };
   }
+  async function persistBookmarks() {
+    try {
+      await saveBookmarks(bookmarks, (data) => Preferences.set({ key: "bookmarks-v1", value: JSON.stringify(data) }));
+    } catch {
+      note("update-status", "Could not save bookmark changes.");
+    }
+    updateBookmarkCount();
+  }
+  function updateBookmarkCount() {
+    const countEl = $("bookmark-count");
+    if (countEl) countEl.textContent = bookmarks.length;
+  }
+  async function handleToggleBookmark(urlOrId) {
+    bookmarks = toggleBookmark(bookmarks, urlOrId);
+    await persistBookmarks();
+    drawNews();
+  }
   function openNewsFilters() {
     let source = newsFilter.source, selected = new Set(newsFilter.categories), body = el("div");
     body.append(el("h3", "", "News sources"));
@@ -1601,15 +1750,18 @@
       input.onchange = () => input.checked ? selected.add(key) : selected.delete(key);
       body.append(line);
     }
-    openSheet("Filter news", body, [action("Clear", () => {
-      newsFilter = { ...newsFilter, source: "all", categories: [] };
-      drawNews();
-      closeSheet();
-    }), action("Show stories", () => {
-      newsFilter = { ...newsFilter, source, categories: [...selected] };
-      drawNews();
-      closeSheet();
-    }, "primary")]);
+    openSheet("Filter news", body, [
+      action("Clear", () => {
+        newsFilter = { ...newsFilter, source: "all", categories: [] };
+        drawNews();
+        closeSheet();
+      }),
+      action("Apply Filters", () => {
+        newsFilter = { ...newsFilter, source, categories: [...selected] };
+        drawNews();
+        closeSheet();
+      }, "primary")
+    ]);
   }
   function openCertFilters() {
     let domain = certDomain, body = el("div");
@@ -1618,41 +1770,125 @@
       input.onchange = () => domain = key;
       body.append(line);
     }
-    openSheet("Career area", body, [action("All areas", () => {
-      certDomain = "all";
-      shown = 45;
-      drawCerts();
-      closeSheet();
-    }), action("Apply", () => {
-      certDomain = domain;
-      shown = 45;
-      drawCerts();
-      closeSheet();
-    }, "primary")]);
+    openSheet("Career area", body, [
+      action("All areas", () => {
+        certDomain = "all";
+        shown = 45;
+        drawCerts();
+        closeSheet();
+      }),
+      action("Apply", () => {
+        certDomain = domain;
+        shown = 45;
+        drawCerts();
+        closeSheet();
+      }, "primary")
+    ]);
   }
-  async function readStory(row) {
-    const result = await openArticle(row.url, { native: Capacitor.isNativePlatform(), openNative: (url) => Browser2.open({ url }), openWeb: (url) => {
-      const opened = window.open(url, "_blank");
-      if (opened) opened.opener = null;
-      return opened;
-    } });
-    if (!result.ok) note("update-status", result.reason === "invalid-url" ? "The source link is unavailable." : "Could not open the source. Try again when connected.");
+  async function launchArticle(url) {
+    const result = await openArticle(url, {
+      native: Capacitor.isNativePlatform(),
+      openNative: (u2) => Browser2.open({ url: u2 }),
+      openWeb: (u2) => {
+        const opened = window.open(u2, "_blank");
+        if (opened) opened.opener = null;
+        return opened;
+      }
+    });
+    if (!result.ok) {
+      note("update-status", result.reason === "invalid-url" ? "Source link is invalid or unavailable." : "Could not open article. Ensure you are connected to the internet.");
+    }
+  }
+  function openStoryReader(row) {
+    const body = el("div");
+    const bookmarked = isBookmarked(bookmarks, row.url || row.id);
+    const tags = categoriesFor(row);
+    const tagList = el("div", "tag-list");
+    for (const tag of tags) {
+      const matching = CATEGORIES.find((c) => c[0] === tag);
+      tagList.append(el("span", "tag-pill", matching ? matching[1] : tag));
+    }
+    body.append(
+      el("p", "source", `${row.sourceName || row.source || "Security Publisher"} \xB7 ${date(row.published)}`),
+      tagList,
+      el("p", "", row.extract || "No preview available. Open the source publication for full context."),
+      el("p", "sub", "Note: In accordance with copyright practices, the full article remains hosted on the original publisher's site.")
+    );
+    const bookmarkBtn = action(bookmarked ? "\u2605 Bookmarked" : "\u2606 Bookmark story", async () => {
+      await handleToggleBookmark(row.url || row.id);
+      closeSheet();
+    }, bookmarked ? "quiet active" : "quiet");
+    const openBtn = action("Read at publisher \u2197", () => {
+      closeSheet();
+      launchArticle(row.url);
+    }, "primary");
+    openSheet(row.title || "Security News Digest", body, [bookmarkBtn, openBtn]);
   }
   function drawNews() {
-    const rows = filterNews(news.articles || [], { ...newsFilter, query: $("news-search").value });
-    const f2 = newsFilter.categories.length + (newsFilter.source === "all" ? 0 : 1);
-    $("news-filter").textContent = f2 ? `Filters (${f2})` : "Filters";
-    note("news-count", `${rows.length} of ${news.articles?.length || 0} stories`);
+    const query = $("news-search").value;
+    const rows = filterNews(news.articles || [], { ...newsFilter, query, bookmarks });
+    const fCount = newsFilter.categories.length + (newsFilter.source === "all" ? 0 : 1);
+    $("news-filter").textContent = fCount ? `Filters (${fCount})` : "Filters";
+    $("news-filter").classList.toggle("active", fCount > 0);
+    const bookmarkBtn = $("news-bookmarks");
+    if (bookmarkBtn) {
+      bookmarkBtn.classList.toggle("active", newsFilter.bookmarkedOnly);
+      bookmarkBtn.setAttribute("aria-pressed", String(newsFilter.bookmarkedOnly));
+    }
+    updateBookmarkCount();
+    const total = news.articles?.length || 0;
+    note("news-count", newsFilter.bookmarkedOnly ? `${rows.length} bookmarked ${rows.length === 1 ? "story" : "stories"}` : `${rows.length} of ${total} stories`);
     const list = $("stories");
     list.replaceChildren();
     if (!rows.length) {
-      list.append(el("p", "empty", "No stories match. Change or clear the filters."));
+      const empty = el("div", "empty");
+      if (newsFilter.bookmarkedOnly) {
+        empty.append(
+          el("p", "", "No bookmarked stories yet."),
+          action("Show all news", () => {
+            newsFilter.bookmarkedOnly = false;
+            drawNews();
+          }, "primary small-btn")
+        );
+      } else {
+        empty.append(
+          el("p", "", "No stories match your search or filter criteria."),
+          action("Reset filters & search", () => {
+            $("news-search").value = "";
+            newsFilter = { source: "all", categories: [], query: "", bookmarkedOnly: false };
+            drawNews();
+          }, "primary small-btn")
+        );
+      }
+      list.append(empty);
       return;
     }
     for (const row of rows) {
-      const card = el("article", "card story"), open = action("", () => readStory(row), "story-open");
-      open.setAttribute("aria-label", `Read full article from ${row.sourceName || row.source || "source"}: ${row.title || "Untitled"}`);
-      open.append(el("span", "source", `${row.sourceName || row.source || "Source"} \xB7 ${date(row.published)}`), el("span", "story-title", row.title || "Untitled"), el("span", "story-preview", row.extract || "Open the source for the full article."), el("span", "read-label", "Read full article in app"));
+      const card = el("article", "card story");
+      const bookmarked = isBookmarked(bookmarks, row.url || row.id);
+      const headRow = el("div", "card-header-row");
+      headRow.append(el("span", "source", `${row.sourceName || row.source || "Source"} \xB7 ${date(row.published)}`));
+      const bmBtn = action(bookmarked ? "\u2605" : "\u2606", async (e) => {
+        e.stopPropagation();
+        await handleToggleBookmark(row.url || row.id);
+      }, `bookmark-toggle-btn ${bookmarked ? "bookmarked" : ""}`);
+      bmBtn.setAttribute("aria-label", bookmarked ? "Remove bookmark" : "Bookmark story");
+      headRow.append(bmBtn);
+      card.append(headRow);
+      const open = action("", () => openStoryReader(row), "story-open");
+      open.setAttribute("aria-label", `Read digest: ${row.title || "Untitled"}`);
+      const tags = categoriesFor(row).slice(0, 3);
+      const tagList = el("div", "tag-list");
+      for (const tag of tags) {
+        const match = CATEGORIES.find((c) => c[0] === tag);
+        tagList.append(el("span", "tag-pill", match ? match[1] : tag));
+      }
+      open.append(
+        el("span", "story-title", row.title || "Untitled"),
+        tagList,
+        el("span", "story-preview", row.extract || "Tap to read preview."),
+        el("span", "read-label", "Open digest & details \u2192")
+      );
       card.append(open);
       list.append(card);
     }
@@ -1665,70 +1901,157 @@
   }
   function certCard(row) {
     const card = el("article", "card");
-    card.append(el("div", "source", `${domains[row.main_domain] || row.main_domain || "Other"} \xB7 ${level(row.skill_row)}`), el("h2", "", row.full_name || row.acronym), el("p", "sub", `${row.acronym || ""} \xB7 ${row.cost_notes || "Confirm price and training with the issuer."}`));
+    const inRoadmap = roadmap.ids.includes(row.id);
+    const headRow = el("div", "card-header-row");
+    headRow.append(el("span", "source", `${domains[row.main_domain] || row.main_domain || "Other"} \xB7 ${level(row.skill_row)}`));
+    if (inRoadmap) {
+      headRow.append(el("span", "in-roadmap-pill", "\u2713 In Roadmap"));
+    }
+    card.append(headRow);
+    card.append(
+      el("h2", "", row.full_name || row.acronym),
+      el("p", "sub", `${row.acronym || ""} \xB7 ${row.cost_notes || "Confirm price and exam prerequisites with issuer."}`)
+    );
     const buttons = el("div", "card-actions");
-    buttons.append(action(roadmap.ids.includes(row.id) ? "Remove from roadmap" : "Add to roadmap", async () => {
-      try {
-        await save(toggle(roadmap, row.id));
-      } catch {
-        note("route-status", "Could not save roadmap. Try again.");
-      }
-    }), action("Details", () => details(row)), external(row.official_url, "Issuer"));
+    buttons.append(
+      action(inRoadmap ? "Remove" : "+ Add to roadmap", async () => {
+        try {
+          await save(toggle(roadmap, row.id));
+        } catch {
+          note("route-status", "Could not save roadmap. Try again.");
+        }
+      }, inRoadmap ? "quiet" : "quiet active"),
+      action("Details", () => details(row)),
+      external(row.official_url, "Official site \u2197")
+    );
     card.append(buttons);
     return card;
   }
   function drawCerts() {
-    const rows = filterCerts(certs, $("cert-search").value, certDomain);
+    const query = $("cert-search").value;
+    const rows = filterCerts(certs, query, certDomain);
     $("cert-filter").textContent = certDomain === "all" ? "All areas" : domains[certDomain] || certDomain;
+    $("cert-filter").classList.toggle("active", certDomain !== "all");
     note("cert-count", `${rows.length} of ${certs.length} certifications`);
-    $("certs").replaceChildren(...rows.slice(0, shown).map(certCard));
+    const container = $("certs");
+    container.replaceChildren();
+    if (!rows.length) {
+      const empty = el("div", "empty");
+      empty.append(
+        el("p", "", "No certifications match your query or category filter."),
+        action("Reset filters", () => {
+          $("cert-search").value = "";
+          certDomain = "all";
+          shown = 45;
+          drawCerts();
+        }, "primary small-btn")
+      );
+      container.append(empty);
+      $("more").hidden = true;
+      return;
+    }
+    container.append(...rows.slice(0, shown).map(certCard));
     $("more").hidden = shown >= rows.length;
   }
   function details(row) {
     const body = el("div"), dl = el("dl");
-    const fields = [["Acronym", row.acronym], ["Career area", domains[row.main_domain] || row.main_domain], ["Level (roadmap estimate)", level(row.skill_row)], ["Course modules", row.modules_count || row.course_modules], ["Study time", row.study_hours_est ? `${row.study_hours_est} hours` : null], ["Exam duration", row.exam_minutes ? `${row.exam_minutes} minutes` : null], ["Price / training", row.cost_notes || row.listed_cost_usd], ["Exam questions", row.exam_questions], ["Renewal", row.validity_years ? `${row.validity_years} years` : null]];
+    const inRoadmap = roadmap.ids.includes(row.id);
+    const fields = [
+      ["Acronym", row.acronym],
+      ["Career domain", domains[row.main_domain] || row.main_domain],
+      ["Sub-domain", row.sub_domain || "General"],
+      ["Estimated level", level(row.skill_row)],
+      ["Study time", row.study_hours_est ? `${row.study_hours_est} estimated hours` : "Varies by background"],
+      ["Exam duration", row.exam_minutes ? `${row.exam_minutes} minutes` : "Check issuer format"],
+      ["Price / fees", row.cost_notes || row.listed_cost_usd || "Contact issuer"],
+      ["Exam questions", row.exam_questions || "Standard format"],
+      ["Validity period", row.validity_years ? `${row.validity_years} years` : "Check renewal policy"]
+    ];
     for (const [label, value] of fields) {
       const line = el("div", "detail");
-      line.append(el("dt", "", label), el("dd", "", value || "Not listed in the catalogue"));
+      line.append(el("dt", "", label), el("dd", "", value || "Not listed"));
       dl.append(line);
     }
-    body.append(el("p", "", row.full_name || row.acronym), dl, el("p", "", "Check current course modules, price and requirements with the issuer before enrolling."));
-    openSheet(row.acronym || "Certification details", body, [external(row.official_url, "Official course or exam page")]);
+    body.append(
+      el("p", "", row.full_name || row.acronym),
+      dl,
+      el("p", "sub", "Exam content, pricing, and prerequisites may change over time. Verify with the issuer prior to registration.")
+    );
+    const toggleBtn = action(inRoadmap ? "Remove from roadmap" : "Add to roadmap", async () => {
+      try {
+        await save(toggle(roadmap, row.id));
+        closeSheet();
+      } catch {
+        note("route-status", "Could not update roadmap.");
+      }
+    }, inRoadmap ? "quiet" : "primary");
+    openSheet(row.acronym || "Certification details", body, [
+      toggleBtn,
+      external(row.official_url, "Official course or exam page \u2197")
+    ]);
   }
   function drawRoadmap() {
     const list = $("route");
     list.replaceChildren();
     $("count").textContent = roadmap.ids.length;
+    const progress = calcProgress(roadmap, byId);
+    const progressBox = $("route-progress-box");
+    const headerActions = $("route-header-actions");
     if (!roadmap.ids.length) {
-      list.append(el("li", "empty", "No courses yet. Add one from Certifications."));
+      if (progressBox) progressBox.hidden = true;
+      if (headerActions) headerActions.hidden = true;
+      const empty = el("li", "empty");
+      empty.append(
+        el("p", "", "Your study roadmap is currently empty."),
+        el("p", "sub", "Add certifications from the Certifications tab to plan your path and track your study progress."),
+        action("Explore Certifications", () => show("certs"), "primary small-btn")
+      );
+      list.append(empty);
       return;
+    }
+    if (progressBox) {
+      progressBox.hidden = false;
+      $("route-progress-title").textContent = `${progress.completed} of ${progress.total} completed (${progress.percentage}%)`;
+      $("route-progress-sub").textContent = progress.estimatedHours > 0 ? `${progress.completedHours}h completed / ${progress.estimatedHours}h total study` : `${progress.completed} milestone${progress.completed === 1 ? "" : "s"} achieved`;
+      $("route-progress-bar").setAttribute("aria-valuenow", String(progress.percentage));
+      $("route-progress-fill").style.width = `${progress.percentage}%`;
+    }
+    if (headerActions) {
+      headerActions.hidden = false;
     }
     roadmap.ids.forEach((id, index) => {
       const row = byId.get(id);
       if (!row) return;
-      const li = el("li"), card = action("", () => details(row), "timeline-card");
-      card.classList.toggle("done", roadmap.done.includes(id));
+      const isDone = roadmap.done.includes(id);
+      const li = el("li", isDone ? "item-done" : "");
+      const card = action("", () => details(row), "timeline-card");
+      card.classList.toggle("done", isDone);
       card.setAttribute("aria-label", `Details for ${row.full_name || row.acronym}`);
-      card.append(el("span", "step", `Step ${index + 1} \xB7 ${level(row.skill_row)}`), el("strong", "", row.full_name || row.acronym), el("span", "sub", `${row.acronym || ""} \xB7 ${domains[row.main_domain] || row.main_domain || "Other"} \xB7 Tap for details`));
+      card.append(
+        el("span", "step", `Step ${index + 1} \xB7 ${level(row.skill_row)}${isDone ? " \xB7 Completed \u2713" : ""}`),
+        el("strong", "", row.full_name || row.acronym),
+        el("span", "sub", `${row.acronym || ""} \xB7 ${domains[row.main_domain] || row.main_domain || "Other"}${row.study_hours_est ? ` \xB7 ~${row.study_hours_est}h` : ""}`)
+      );
       li.append(card);
-      const tools = el("div", "timeline-actions"), done = choice("checkbox", "", id, "Completed", roadmap.done.includes(id));
+      const tools = el("div", "timeline-actions");
+      const done = choice("checkbox", "", id, "Completed", isDone);
       done.input.onchange = async () => {
         try {
           await save(complete(roadmap, id));
         } catch {
           drawRoadmap();
-          note("route-status", "Could not save completion. Try again.");
+          note("route-status", "Could not save milestone status.");
         }
       };
       tools.append(done.line);
-      for (const [name, step] of [["Up", -1], ["Down", 1]]) {
+      for (const [name, step] of [["\u25B2 Up", -1], ["\u25BC Down", 1]]) {
         const button = action(name, async () => {
           try {
             await save(move(roadmap, id, step));
           } catch {
-            note("route-status", "Could not save order. Try again.");
+            note("route-status", "Could not save milestone order.");
           }
-        });
+        }, "small-btn quiet");
         button.disabled = index + step < 0 || index + step >= roadmap.ids.length;
         tools.append(button);
       }
@@ -1736,43 +2059,82 @@
         try {
           await save(toggle(roadmap, id));
         } catch {
-          note("route-status", "Could not remove course. Try again.");
+          note("route-status", "Could not remove milestone.");
         }
-      }));
+      }, "small-btn quiet"));
       li.append(tools);
       list.append(li);
     });
   }
+  function promptClearRoadmap() {
+    const body = el("div");
+    body.append(
+      el("p", "", "Are you sure you want to clear your certification roadmap?"),
+      el("p", "sub", "All current steps, ordering, and completion checkboxes will be reset.")
+    );
+    openSheet("Clear Roadmap", body, [
+      action("Cancel", closeSheet, "quiet"),
+      action("Clear all milestones", async () => {
+        try {
+          await save(clearRoute());
+          closeSheet();
+        } catch {
+          note("route-status", "Could not clear roadmap.");
+        }
+      }, "primary")
+    ]);
+  }
   function about() {
     const body = el("div");
-    body.append(el("p", "", "Independent cybersecurity intelligence and career planning for aspiring security professionals."), el("p", "", "\xA9 2026 J.M. All rights reserved."));
+    body.append(
+      el("p", "", "Cyber Security Expedition is an offline-ready Android app for following cybersecurity news, exploring security certifications, and personal study planning."),
+      el("p", "sub", "Engineered with vanilla JavaScript, Capacitor, and DevSecOps automated pipelines (CodeQL SAST, secret scanning, and unit testing)."),
+      el("p", "", "\xA9 2026 J.M. All rights reserved.")
+    );
     const links = el("div", "sheet-links");
-    for (const [url, label] of [["mailto:jyotirmay.mondal@efrei.net", "Contact"], ["https://github.com/Jy0t1may", "GitHub"], ["https://www.linkedin.com/in/jyotirmay-mondal", "LinkedIn"]]) {
+    for (const [url, label] of [
+      ["mailto:jyotirmay.mondal@efrei.net", "Contact"],
+      ["https://github.com/Jy0t1may", "GitHub Profile"],
+      ["https://www.linkedin.com/in/jyotirmay-mondal", "LinkedIn"]
+    ]) {
       if (url.startsWith("mailto:")) {
         const a = el("a", "", label);
         a.href = url;
         links.append(a);
-      } else links.append(external(url, label));
+      } else {
+        links.append(external(url, label));
+      }
     }
     body.append(links);
     openSheet("Security Expedition", body);
   }
   async function loadSaved() {
     try {
-      const file = await Filesystem.readFile({ path: "news.json", directory: Directory.Data, encoding: Encoding.UTF8 }), cached = JSON.parse(file.data);
-      if (Array.isArray(cached.articles) && Array.isArray(cached.sources) && Date.parse(cached.fetchedAt) > Date.parse(seed.fetchedAt)) news = cached;
+      const file = await Filesystem.readFile({ path: "news.json", directory: Directory.Data, encoding: Encoding.UTF8 });
+      const cached = JSON.parse(file.data);
+      if (Array.isArray(cached.articles) && Array.isArray(cached.sources) && Date.parse(cached.fetchedAt) > Date.parse(seed.fetchedAt)) {
+        news = cached;
+      }
     } catch {
     }
     try {
-      const v2 = (await Preferences.get({ key: "roadmap-v2" })).value, old = (await Preferences.get({ key: "roadmap-v1" })).value;
+      const v2 = (await Preferences.get({ key: "roadmap-v2" })).value;
+      const old = (await Preferences.get({ key: "roadmap-v1" })).value;
       roadmap = decodeRoute(v2, old, new Set(byId.keys()));
-      if (!v2 && old && roadmap.ids.length) await Preferences.set({ key: "roadmap-v2", value: JSON.stringify(roadmap) });
+      if (!v2 && old && roadmap.ids.length) {
+        await Preferences.set({ key: "roadmap-v2", value: JSON.stringify(roadmap) });
+      }
+    } catch {
+    }
+    try {
+      const savedBookmarks = (await Preferences.get({ key: "bookmarks-v1" })).value;
+      bookmarks = decodeBookmarks(savedBookmarks);
     } catch {
     }
     drawNews();
     drawCerts();
     drawRoadmap();
-    note("update-status", `Saved feed: ${date(news.fetchedAt)}. Tap to check for updates.`);
+    note("update-status", `Cached news: ${date(news.fetchedAt)}. Tap 'Check for updates' when online.`);
   }
   async function update() {
     if (busy) return;
@@ -1780,23 +2142,36 @@
     $("refresh").disabled = true;
     note("update-status", "Checking feeds\u2026");
     try {
-      const result = await refreshFeeds({ baseline: news, feeds: FEEDS, request: (url) => CapacitorHttp.get({ url, responseType: "text", connectTimeout: 12e3, readTimeout: 12e3 }) });
+      const result = await refreshFeeds({
+        baseline: news,
+        feeds: FEEDS,
+        request: (url) => CapacitorHttp.get({ url, responseType: "text", connectTimeout: 12e3, readTimeout: 12e3 })
+      });
       await Filesystem.writeFile({ path: "news.json", directory: Directory.Data, encoding: Encoding.UTF8, data: JSON.stringify(result.news) });
       news = result.news;
       drawNews();
-      note("update-status", `Checked ${result.updated.length} of ${FEEDS.length} feeds at ${date(news.fetchedAt)}.${result.failed.length ? " Unavailable: " + result.failed.join(", ") + ". Previous posts are retained." : ""}`);
+      note("update-status", `Updated ${result.updated.length} of ${FEEDS.length} feeds (${date(news.fetchedAt)}).${result.failed.length ? " Feeds unreachable: " + result.failed.join(", ") + ". Cached posts retained." : ""}`);
     } catch (e) {
-      note("update-status", `${e.message || "Update failed"} Saved posts are unchanged.`);
+      note("update-status", `Offline or feed check failed (${e.message || "Network error"}). Previously saved articles remain available.`);
     } finally {
       busy = false;
       $("refresh").disabled = false;
     }
   }
-  for (const key of ["news", "certs", "route"]) $("tab-" + key).onclick = () => show(key);
+  for (const key of ["news", "certs", "route"]) {
+    $("tab-" + key).onclick = () => show(key);
+  }
   $("about").onclick = about;
   $("refresh").onclick = update;
   $("news-search").oninput = drawNews;
   $("news-filter").onclick = openNewsFilters;
+  var bookmarksBtn = $("news-bookmarks");
+  if (bookmarksBtn) {
+    bookmarksBtn.onclick = () => {
+      newsFilter.bookmarkedOnly = !newsFilter.bookmarkedOnly;
+      drawNews();
+    };
+  }
   $("cert-search").oninput = () => {
     shown = 45;
     drawCerts();
@@ -1806,6 +2181,10 @@
     shown += 45;
     drawCerts();
   };
+  var clearRouteBtn = $("clear-route");
+  if (clearRouteBtn) {
+    clearRouteBtn.onclick = promptClearRoadmap;
+  }
   if (Capacitor.isNativePlatform()) {
     SystemBars.show().catch(() => {
     });
