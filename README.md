@@ -2,8 +2,6 @@
 
 **Cyber Security Expedition** is an offline-ready Android app for following cybersecurity news, exploring security certifications, and personal study planning. Engineered with vanilla JavaScript, Capacitor, and an enterprise DevSecOps CI/CD pipeline enforcing secure code commits.
 
-GitHub Repository: [github.com/Jy0t1may/cyberexpedition](https://github.com/Jy0t1may/cyberexpedition)
-
 ---
 
 ## Features
