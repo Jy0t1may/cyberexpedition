@@ -1,14 +1,23 @@
-node_modules/
-www/
+# macOS
 .DS_Store
-android/.idea/
+.AppleDouble
+.LSOverride
+# Security: Never commit keystores, certificates or private credentials
+*.jks
+*.keystore
+*.p12
+*.key
+*.pem
+# Dependencies
+node_modules/
+# Build artifacts
+www/
 android/.gradle/
 android/build/
 android/app/build/
-android/local.properties
-*.jks
-*.keystore
-keystore.properties
 *.apk
 *.aab
-.security-expedition*backup.*/
+# Local Archives and Iteration Backups
+*.zip
+old-iteration1-files/
+old-iteration2-files/
